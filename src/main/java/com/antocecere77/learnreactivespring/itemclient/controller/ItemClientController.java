@@ -1,12 +1,15 @@
 package com.antocecere77.learnreactivespring.itemclient.controller;
 
 import com.antocecere77.learnreactivespring.itemclient.domain.Item;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
+@Slf4j
 @RestController
 public class ItemClientController {
 
@@ -85,4 +88,20 @@ public class ItemClientController {
                 .bodyToMono(Void.class)
                 .log("Delete item is: ");
     }
+
+    @GetMapping("/client/retrieve/error")
+    public Flux<Item> errorRetrieve() {
+        return webClient.get()
+                .uri("/v1/items/returnException")
+                .retrieve()
+                .onStatus(HttpStatus::is5xxServerError, clientResponse -> {
+                    Mono<String> errorMono = clientResponse.bodyToMono(String.class);
+                    return errorMono.flatMap(errorMessage -> {
+                        log.error("The error message is " + errorMessage);
+                        throw new RuntimeException(errorMessage);
+                    });
+                })
+                .bodyToFlux(Item.class);
+    }
+
 }
