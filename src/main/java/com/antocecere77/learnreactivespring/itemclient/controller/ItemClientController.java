@@ -104,4 +104,22 @@ public class ItemClientController {
                 .bodyToFlux(Item.class);
     }
 
+    @GetMapping("/client/exchange/error")
+    public Flux<Item> errorExchange() {
+        return webClient.get()
+                .uri("/v1/items/returnException")
+                .exchange()
+                .flatMapMany(clientResponse -> {
+                    if(clientResponse.statusCode().is5xxServerError()) {
+                        return clientResponse.bodyToMono(String.class)
+                                .flatMap(errorMessage -> {
+                                    log.error("Error message in exchange: " + errorMessage);
+                                    throw new RuntimeException(errorMessage);
+                                });
+                    } else {
+                        return clientResponse.bodyToFlux(Item.class);
+                    }
+                });
+    }
+
 }
